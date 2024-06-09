@@ -2,10 +2,14 @@ from database.connection import get_db_connection
 
 class Magazine:
     def __init__(self, id, name, category):
+        if not isinstance(name, str) or len(name) < 2 or len(name) > 16:
+            raise ValueError("Name must be a string between 2 and 16 characters")
+        if not isinstance(category, str) or len(category) == 0:
+            raise ValueError("Category must be a non-empty string")
         self._id = id
-        self.name = name 
-        self.category = category 
-        self._save_to_db()  
+        self._name = name
+        self._category = category
+        self._save_to_db()
 
     @property
     def id(self):
@@ -16,30 +20,35 @@ class Magazine:
         return self._name
 
     @name.setter
-    def name(self, value):
-        if not isinstance(value, str):
-            raise ValueError("Name must be a string.")
-        if not 2 <= len(value) <= 16:
-            raise ValueError("Name must be between 2 and 16 characters.")
-        self._name = value
+    def name(self, new_name):
+        if not isinstance(new_name, str) or len(new_name) < 2 or len(new_name) > 16:
+            raise ValueError("Name must be a string between 2 and 16 characters")
+        self._name = new_name
+        self._update_db()
 
     @property
     def category(self):
         return self._category
 
     @category.setter
-    def category(self, value):
-        if not isinstance(value, str):
-            raise ValueError("Category must be a string.")
-        if len(value) == 0:
-            raise ValueError("Category must be longer than 0 characters.")
-        self._category = value
+    def category(self, new_category):
+        if not isinstance(new_category, str) or len(new_category) == 0:
+            raise ValueError("Category must be a non-empty string")
+        self._category = new_category
+        self._update_db()
 
     def _save_to_db(self):
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute('INSERT INTO magazines (name, category) VALUES (?, ?)', (self._name, self._category))
         self._id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+
+    def _update_db(self):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('UPDATE magazines SET name = ?, category = ? WHERE id = ?', (self._name, self._category, self._id))
         conn.commit()
         conn.close()
 
@@ -51,40 +60,9 @@ class Magazine:
         magazine_data = cursor.fetchone()
         conn.close()
         if magazine_data:
-            return Magazine(magazine_data['id'], magazine_data['name'], magazine_data['category'])
+            return Magazine(magazine_data["id"], magazine_data["name"], magazine_data["category"])
         else:
             return None
 
-    def articles(self):
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM articles WHERE magazine_id = ?', (self._id,))
-        articles_data = cursor.fetchall()
-        conn.close()
-        return [Article(article['id'], article['title'], article['content'], article['author_id'], article['magazine_id']) for article in articles_data]
-
-    def contributors(self):
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT DISTINCT authors.id, authors.name
-            FROM authors
-            JOIN articles ON articles.author_id = authors.id
-            WHERE articles.magazine_id = ?
-        ''', (self._id,))
-        contributors_data = cursor.fetchall()
-        conn.close()
-        return [Author(author['id'], author['name']) for author in contributors_data]
-
-
     def __repr__(self):
         return f'<Magazine {self.name}>'
-
-
-if __name__ == "__main__":
-    new_magazine = Magazine(id=None, name="Tech Today", category="Technology")
-    print(new_magazine)
-
-    
-    retrieved_magazine = Magazine.get_magazine_by_id(new_magazine.id)
-    print(retrieved_magazine)

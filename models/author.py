@@ -3,6 +3,8 @@ from database.connection import get_db_connection
 
 class Author:
     def __init__(self, id, name):
+        if not isinstance(name, str) or len(name) == 0:
+            raise ValueError("Name must be a non-empty string")
         self._id = id
         self._name = name  
         if id is None:  
