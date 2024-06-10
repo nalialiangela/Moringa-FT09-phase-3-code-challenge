@@ -1,88 +1,106 @@
-from database.setup import create_tables
-from database.connection import get_db_connection
-from models.article import Article
+
 from models.author import Author
+from models.article import Article
 from models.magazine import Magazine
 
-def main():
-    # Initialize the database and create tables
-    create_tables()
+def include_new_author():
+    name = input("Enter author's name: ")
+    try:
+        author = Author(None, name)
+        print(f"Author '{author.name}' included with ID {author.id}.")
+    except ValueError as e:
+        print(e)
 
-    # Collect user input
-    author_name = input("Enter author's name: ")
-    magazine_name = input("Enter magazine name: ")
-    magazine_category = input("Enter magazine category: ")
-    article_title = input("Enter article title: ")
-    article_content = input("Enter article content: ")
+def include_new_magazine():
+    name = input("Enter magazine's name: ")
+    category = input("Enter magazine's category: ")
+    try:
+        magazine = Magazine(None, name, category)
+        print(f"Magazine '{magazine.name}' included with ID {magazine.id}.")
+    except ValueError as e:
+        print(e)
 
-    # Connect to the database
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    # Create an author
-    cursor.execute('INSERT INTO authors (name) VALUES (?)', (author_name,))
-    author_id = cursor.lastrowid # Use this to fetch the id of the newly created author
+def include_new_article():
+    title = input("Enter article's title: ")
+    content = input("Enter article's content: ")
+    author_id = int(input("Enter author's ID: "))
+    magazine_id = int(input("Enter magazine's ID: "))
+    try:
+        article = Article(None, title, content, author_id, magazine_id)
+        print(f"Article '{article.title}' included with ID {article.id}.")
+    except ValueError as e:
+        print(e)
 
-    # Create a magazine
-    cursor.execute('INSERT INTO magazines (name, category) VALUES (?, ?)', (magazine_name, magazine_category))
-    magazine_id = cursor.lastrowid # Use this to fetch the id of the newly created magazine
-
-    # Create an article
-    cursor.execute('INSERT INTO articles (title, content, author_id, magazine_id) VALUES (?, ?, ?, ?)',
-                   (article_title, article_content, author_id, magazine_id))
-    article_id = cursor.lastrowid # Use this to fetch the id of the newly created article
-
-    conn.commit()
-
-    # Query the database for inserted records.
-    cursor.execute('SELECT * FROM magazines')
-    magazines = cursor.fetchall()
-
-    cursor.execute('SELECT * FROM authors')
-    authors = cursor.fetchall()
-
-    cursor.execute('SELECT * FROM articles')
-    articles = cursor.fetchall()
-
-    conn.close()
-
-    # Display results
-    print("\nMagazines:")
-    for magazine in magazines:
-        print(Magazine(magazine[0], magazine[1], magazine[2]))
-
-    print("\nAuthors:")
-    for author in authors:
-        print(Author(author[0], author[1]))
-
-    print("\nArticles:")
-    for article in articles:
-        print(Article(article[0], article[1], article[2], article[3], article[4]))
-
-    # Display results for user input
-    print("\nNewly Created Records:")
-    print("Author ID:", author_id)
-    print("Magazine ID:", magazine_id)
-    print("Article ID:", article_id)
-
-    # Test the relationship methods
-    print("\nTesting the Relationship Methods:")
-
-    # Assuming the above created author_id and magazine_id are used
-    new_article = Article(id=article_id, title=article_title, content=article_content, author_id=author_id, magazine_id=magazine_id)
-    print(new_article)
-
-    retrieved_article = Article.get_article_by_id(new_article.id)
-    print(retrieved_article)
-    print(retrieved_article.author)
-    print(retrieved_article.magazine)
-
+def search_author_articles():
+    author_id = int(input("Enter author ID: "))
     author = Author.get_author_by_id(author_id)
-    print(author.articles())
-    print(author.articles())
+    if author:
+        articles = Article.get_articles_by_author_id(author_id)
+        if articles:
+            print(f"Articles for author '{author.name}':")
+            for article in articles:
+                print(f" - {article.title}")
+        else:
+            print(f"No articles found for author '{author.name}'.")
+    else:
+        print(f"No author found with ID {author_id}.")
 
+def search_magazine_articles():
+    magazine_id = int(input("Enter magazine ID: "))
     magazine = Magazine.get_magazine_by_id(magazine_id)
-    print(magazine.articles())
-    print(magazine.contributors())
+    if magazine:
+        articles = Article.get_articles_by_magazine_id(magazine_id)
+        if articles:
+            print(f"Articles for magazine '{magazine.name}':")
+            for article in articles:
+                print(f" - {article.title}")
+        else:
+            print(f"No articles found for magazine '{magazine.name}'.")
+    else:
+        print(f"No magazine found with ID {magazine_id}.")
+
+def search_magazine_contributors():
+    magazine_id = int(input("Enter magazine ID: "))
+    magazine = Magazine.get_magazine_by_id(magazine_id)
+    if magazine:
+        authors = Article.get_contributors_by_magazine_id(magazine_id)
+        if authors:
+            print(f"Contributors for magazine '{magazine.name}':")
+            for author in authors:
+                print(f" - {author.name}")
+        else:
+            print(f"No contributors found for magazine '{magazine.name}'.")
+    else:
+        print(f"No magazine found with ID {magazine_id}.")
+
+def main():
+    while True:
+        print("Menu:")
+        print("1. Add new Author")
+        print("2. Add new Magazine")
+        print("3. Add new Article")
+        print("4. Search Author's Articles")
+        print("5. Search Magazine's Articles")
+        print("6. Search Magazine's Contributors")
+        print("7. Exit")
+        choice = int(input("Enter your choice: "))
+        
+        if choice == 1:
+            include_new_author()
+        elif choice == 2:
+            include_new_magazine()
+        elif choice == 3:
+            include_new_article()
+        elif choice == 4:
+            search_author_articles()
+        elif choice == 5:
+            search_magazine_articles()
+        elif choice == 6:
+            search_magazine_contributors()
+        elif choice == 7:
+            break
+        else:
+            print("Invalid choice. Please try again.")
 
 if __name__ == "__main__":
     main()

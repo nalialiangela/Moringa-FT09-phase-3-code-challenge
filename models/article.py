@@ -1,118 +1,34 @@
-from database.connection import get_db_connection
-from models.magazine import Magazine
+import sqlite3
+from .author import Author
+
+def get_db_connection():
+    conn = sqlite3.connect('database.db')
+    conn.row_factory = sqlite3.Row
+    return conn
 
 class Article:
     def __init__(self, id, title, content, author_id, magazine_id):
-        self._id = id
-        self._title = title  
-        self._content = content 
-        self._author_id = author_id
-        self._magazine_id = magazine_id
-        if self._id is None:  
-            self._save_to_db()
-
-    def _save_to_db(self):
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('INSERT INTO articles (title, content, author_id, magazine_id) VALUES (?, ?, ?, ?)',
-                       (self._title, self._content, self._author_id, self._magazine_id))
-        self._id = cursor.lastrowid
-        conn.commit()
-        conn.close()
-
-    @property
-    def id(self):
-        return self._id
-
-    @property
-    def title(self):
-        return self._title
-
-    @title.setter
-    def title(self, value):
-        if hasattr(self, '_title'):
-            raise AttributeError("Cannot change the title after the article is instantiated.")
-        if not isinstance(value, str):
-            raise ValueError("Title must be a string.")
-        if not 5 <= len(value) <= 50:
-            raise ValueError("Title must be between 5 and 50 characters.")
-        self._title = value
-
-    @property
-    def content(self):
-        return self._content
-
-    @content.setter
-    def content(self, value):
-        if hasattr(self, '_content'):
-            raise AttributeError("Cannot change the content after the article is instantiated.")
-        if not isinstance(value, str):
-            raise ValueError("Content must be a string.")
-        self._content = value
-
-    @property
-    def author_id(self):
-        return self._author_id
-
-    @property
-    def magazine_id(self):
-        return self._magazine_id
-
-    @property
-    def author(self):
-        return Author.get_author_by_id(self._author_id)
-
-    @property
-    def magazine(self):
-        return Magazine.get_magazine_by_id(self._magazine_id)
-
-
-    def _save_to_db(self):
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('INSERT INTO articles (title, content, author_id, magazine_id) VALUES (?, ?, ?, ?)',
-                       (self._title, self._content, self._author_id, self._magazine_id))
-        self._id = cursor.lastrowid
-        conn.commit()
-        conn.close()
+        self.id = id
+        self.title = title
+        self.content = content
+        self.author_id = author_id
+        self.magazine_id = magazine_id
 
     @staticmethod
-    def get_article_by_id(article_id):
+    def get_articles_by_magazine_id(magazine_id):
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('SELECT * FROM articles WHERE id = ?', (article_id,))
-        article_data = cursor.fetchone()
+        cursor.execute('SELECT * FROM articles WHERE magazine_id = ?', (magazine_id,))
+        articles = cursor.fetchall()
         conn.close()
-        if article_data:
-            return Article(
-                article_data['id'], 
-                article_data['title'], 
-                article_data['content'], 
-                article_data['author_id'], 
-                article_data['magazine_id'])
-        else:
-            return None
+        return [Article(article['id'], article['title'], article['content'], article['author_id'], article['magazine_id']) for article in articles]
 
-    def __repr__(self):
-        return f'<Article {self.title}>'
+    @staticmethod
+    def get_contributors_by_magazine_id(magazine_id):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT DISTINCT author_id FROM articles WHERE magazine_id = ?', (magazine_id,))
+        author_ids = cursor.fetchall()
+        conn.close()
+        return [Author.get_author_by_id(author_id['author_id']) for author_id in author_ids]
 
-
-if __name__ == "__main__":
-    author_id = 1
-    magazine_id = 1
-    new_article = Article(id=None, title="The Future of Tech", content="Content of the article", author_id=author_id, magazine_id=magazine_id)
-    print(new_article)
-
-    retrieved_article = Article.get_article_by_id(new_article.id)
-    print(retrieved_article)
-
-    try:
-        new_article.title = "New Title"
-    except AttributeError as e:
-        print(e)
-
-    try:
-        new_article.content = "New Content"
-    except AttributeError as e:
-        print(e)
-from models.author import Author
